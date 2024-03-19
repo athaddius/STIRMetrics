@@ -1,0 +1,2 @@
+python datatest/clicktracks.py --num_data 3
+python datatest/clicktracks.py --num_data 3
