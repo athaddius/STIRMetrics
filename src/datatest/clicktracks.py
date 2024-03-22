@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import random
 import json
 import csrt
-import mft
+from testutil import modeldict
 from testutil import todevice
 from testutil import showimage
 
@@ -35,6 +35,12 @@ def getargs():
         type=int,
         default="8",
         help="number of sequences to use",
+    )
+    parser.add_argument(
+        "--modeltype",
+        type=str,
+        default="CSRT",
+        help="CSRT or MFT",
     )
 
     args = parser.parse_args()
@@ -173,9 +179,7 @@ if __name__ == "__main__":
     args = getargs()
     logging.basicConfig(level=logging.INFO)
     device = "cuda"
-    #modeltype = "CSRTMultiple"
-    modeltype = "MFT"
-    args.modeltype = modeltype
+    modeltype = args.modeltype
 
     datasets = STIRLoader.getclips(datadir=args.datadir)
     random.shuffle(datasets)
@@ -187,8 +191,7 @@ if __name__ == "__main__":
     cv2.setMouseCallback("imagetrack", draw_circle)
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
-            #model = csrt.CSRTMultiple()  # require re-initialization per-sequence, since CSRT uses templates
-            model = mft.MFTTracker()  # require re-initialization per-sequence, since CSRT uses templates
+            model = modeldict[modeltype]() # require re-initialization per-sequence, since CSRT uses templates
             dataloader = torch.utils.data.DataLoader(
                 dataset, batch_size=1, num_workers=0, pin_memory=True
             )
