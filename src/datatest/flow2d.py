@@ -22,6 +22,11 @@ import mft
 modeldict = {"MFT": mft.MFTTracker,
            "CSRT": csrt.CSRTMultiple}
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 def convert_to_opencv(image):
     """ " converts N im tensor to numpy in BGR"""
@@ -80,7 +85,6 @@ def trackanddisplay(
     """tracks and displays pointlist over time
     returns pointlist at seq end"""
     num_pts = startpointlist.shape[1]
-    pointlists = {}
     model = modeldict[modeltype]()
     pointlist = startpointlist
     dataloaderiter = iter(dataloader)
@@ -114,13 +118,11 @@ def trackanddisplay(
 
             showimage("imagetrack", imend)
             cv2.waitKey(1)
-    pointlists[str(model.modeltype)] = pointlist
     if showvis:
         lastframe = convert_to_opencv(ims_ori_pair[1])
-        pointlists[str(model.modeltype)] = pointlist
-        return pointlists, startframe, lastframe
+        return pointlist, startframe, lastframe
     else:
-        return pointlists
+        return pointlist
 
 
 
@@ -130,7 +132,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     #modeltype = "CSRT"
     modeltype = args.modeltype
-    args.modeltype = modeltype
 
     with open("config.json", "r") as f:
         config = json.load(f)
@@ -146,6 +147,7 @@ if __name__ == "__main__":
         num_data_name = "all"
 
     errorlists = {}
+    positionlists = {}
     data_used_count = 0  # sometimes skips if too few
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
@@ -166,7 +168,7 @@ if __name__ == "__main__":
                 pointlist = torch.from_numpy(positions).unsqueeze(0).to(device)
                 print(pointlist.shape)
             else:
-                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device)
+                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device) # FIXME remove unnecessary squeeze/un
                 print(pointlist.shape)
             endseg = dataset.dataset.getendseg()
             endseg = np.array(endseg).sum(axis=2)
@@ -176,43 +178,45 @@ if __name__ == "__main__":
                 print(f"{e} error on dataset load, continuing")
                 continue
             h, w = startseg.shape
-            pointlistend = torch.from_numpy(positions).unsqueeze(0).to(device)
+            pointlistend = torch.from_numpy(positions).to(device)
             errors_control = pointlossunidirectional(
-                pointlist.squeeze(0), pointlistend.squeeze(0)
-            )
-            errors_control = errors_control["averagedistance"]
-            errortype = "endpointerror"
+                pointlist.squeeze(0), pointlistend
+            )["averagedistance"]
 
             if args.showvis:
                 showimage("seg_start", startseg)
                 showimage("seg_end", endseg)
                 cv2.waitKey(1)
-                endres, startframe, lastframe = trackanddisplay(
+                end_estimates, startframe, lastframe = trackanddisplay(
                     pointlist,
                     dataloader,
                     showvis=args.showvis,
                     modeltype=modeltype
                 )
             else:
-                endres = trackanddisplay(
+                end_estimates = trackanddisplay(
                     pointlist,
                     dataloader,
                     showvis=args.showvis,
+                    modeltype=modeltype
                 )
 
+
+            positionlists[str(dataset.dataset.basename)] = end_estimates
+
+            errortype = "endpointerror"
             print(f"DATASET_{ind}: {dataset.dataset.basename}")
             print(f"{errortype}_control: {errors_control}")
             errors_control_avg = errors_control_avg + errors_control
             errordict = {}
             errordict[f"{errortype}_control"] = errors_control
-            for mtype, result in endres.items():
-                # result is a list
-                errors = pointlossunidirectional(result, pointlistend.squeeze(0))
-                errors_imgavg = errors["averagedistance"]
-                errorname = f"{errortype}_{mtype}"
-                errordict[errorname] = errors_imgavg
-                print(f"{errorname}: {errors_imgavg}")
-                errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
+
+            errors = pointlossunidirectional(end_estimates, pointlistend)
+            errors_imgavg = errors["averagedistance"]
+            errorname = f"{errortype}_{modeltype}"
+            errordict[errorname] = errors_imgavg
+            print(f"{errorname}: {errors_imgavg}")
+            errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
             errorlists[str(dataset.dataset.basename)] = errordict
             data_used_count += 1
 
@@ -255,3 +259,5 @@ if __name__ == "__main__":
     import json
     with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(errorlists, fp)
+    with open(f'results/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+        json.dump(positionlists, fp, cls=NumpyEncoder)
