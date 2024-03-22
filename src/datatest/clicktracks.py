@@ -9,9 +9,7 @@ import time
 from collections import defaultdict
 import itertools
 
-base = "../../"  # FIXME: change to package import
-sys.path.append(base + "/STIR_dataloader/")
-import STIRLoader
+from STIRLoader import STIRLoader
 import torch
 
 torch.backends.cudnn.benchmark = True
