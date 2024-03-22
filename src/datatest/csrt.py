@@ -63,7 +63,6 @@ class CSRTMultiple:
             self.firstframe = False
         endim = impair[1]
         pointlist = self.nextframe(endim)
-
         return pointlist
 
 
