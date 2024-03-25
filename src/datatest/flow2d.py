@@ -18,6 +18,7 @@ import logging
 from testutil import *
 import csrt
 import mft
+import MFT.utils.vis_utils as vu
 
 modeldict = {"MFT": mft.MFTTracker,
            "CSRT": csrt.CSRTMultiple}
@@ -70,7 +71,7 @@ def drawpoints(im, points, color):
     for pt in points[:, :]:
         pt = pt.astype(int)
         im = cv2.circle(im, tuple(pt), 3, color, thickness=1)
-        im = cv2.circle(im, tuple(pt), 8, color, thickness=1)
+        im = cv2.circle(im, tuple(pt), 12, color, thickness=3)
     return im
 
 
@@ -80,7 +81,8 @@ def trackanddisplay(
     radius=3,
     thickness=-1,
     showvis=False,
-    modeltype="CSRT"
+    modeltype="CSRT",
+    track_writer=None
 ):
     """tracks and displays pointlist over time
     returns pointlist at seq end"""
@@ -117,6 +119,8 @@ def trackanddisplay(
             drawpoints(imend, pointlist, color)
 
             showimage("imagetrack", imend)
+            if track_writer:
+                track_writer.write(imend)
             cv2.waitKey(1)
     if showvis:
         lastframe = convert_to_opencv(ims_ori_pair[1])
@@ -151,6 +155,9 @@ if __name__ == "__main__":
     data_used_count = 0  # sometimes skips if too few
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
+            outdir = Path(f'./results/{ind:03d}{modeltype}_tracks.mp4')
+            if args.showvis:
+                track_writer = vu.VideoWriter(outdir, fps=26, images_export=False)
             dataloader = torch.utils.data.DataLoader(
                 dataset, batch_size=args.batch_size, num_workers=0, pin_memory=True
             )
@@ -191,14 +198,15 @@ if __name__ == "__main__":
                     pointlist,
                     dataloader,
                     showvis=args.showvis,
-                    modeltype=modeltype
+                    modeltype=modeltype,
+                    track_writer=track_writer
                 )
             else:
                 end_estimates = trackanddisplay(
                     pointlist,
                     dataloader,
                     showvis=args.showvis,
-                    modeltype=modeltype
+                    modeltype=modeltype,
                 )
 
 
@@ -224,10 +232,10 @@ if __name__ == "__main__":
 
                 imend = lastframe
                 color = [0, 255, 0]
-                drawpoints(imend, result, color)
+                drawpoints(imend, end_estimates, color)
 
                 displacements = errors["displacements"]
-                for pt, displacement in zip(result[:, :], displacements):
+                for pt, displacement in zip(end_estimates, displacements):
                     pt = pt.astype(int)
                     displacement = displacement.astype(int)
                     color = [0, 0, 255]
@@ -242,6 +250,8 @@ if __name__ == "__main__":
                 showimage("lastframe", imend)
                 cv2.waitKey(1)
 
+            if args.showvis:
+                track_writer.close()
         except AssertionError as e:
             print(f"error on dataset load, continuing")
 
