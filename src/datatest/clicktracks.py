@@ -38,7 +38,7 @@ def getargs():
         "--modeltype",
         type=str,
         default="CSRT",
-        help="CSRT or MFT",
+        help="CSRT, MFT, RAFT",
     )
 
     args = parser.parse_args()
@@ -81,6 +81,9 @@ def trackanddisplay(model, dataloader):
             (255 * np.ones(num_pts), 255 * np.ones(num_pts), np.zeros(num_pts)), axis=1
         ),
         "MFT": np.stack(
+            (255 * np.ones(num_pts), 255 * np.ones(num_pts), np.zeros(num_pts)), axis=1
+        ),
+        "RAFT": np.stack(
             (255 * np.ones(num_pts), 255 * np.ones(num_pts), np.zeros(num_pts)), axis=1
         ),
     }

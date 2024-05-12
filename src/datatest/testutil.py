@@ -4,11 +4,13 @@ import cv2
 from scipy.spatial import KDTree
 import csrt
 import mft
+import raft
 
 device = "cuda"
 
 modeldict = {"MFT": mft.MFTTracker,
-           "CSRT": csrt.CSRTMultiple}
+           "CSRT": csrt.CSRTMultiple,
+           "RAFT": raft.RAFTTracker}
 
 def todevice(cpudict):
     outdict = {}
