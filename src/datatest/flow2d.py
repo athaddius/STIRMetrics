@@ -21,7 +21,8 @@ import mft
 import MFT.utils.vis_utils as vu
 
 modeldict = {"MFT": mft.MFTTracker,
-           "CSRT": csrt.CSRTMultiple}
+           "CSRT": csrt.CSRTMultiple,
+           "RAFT": raft.RAFTTracker,}
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
