@@ -47,7 +47,7 @@ def getargs():
         "--modeltype",
         type=str,
         default="RAFT_Stereo_RAFT",
-        help="CSRT or MFT",
+        help="Available options: `RAFT_Stereo_RAFT`",
     )
     parser.add_argument(
         "--showvis",
@@ -290,3 +290,5 @@ if __name__ == "__main__":
         json.dump(errorlists, fp)
     with open(f'results/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
+    with open(f'results/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+        json.dump(positionlists_3d, fp, cls=NumpyEncoder)
