@@ -18,10 +18,12 @@ import logging
 from testutil import *
 import csrt
 import mft
+import raft
 import MFT.utils.vis_utils as vu
 
 modeldict = {"MFT": mft.MFTTracker,
-           "CSRT": csrt.CSRTMultiple}
+           "CSRT": csrt.CSRTMultiple,
+           "RAFT": raft.RAFTTracker,}
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -48,7 +50,7 @@ def getargs():
         "--modeltype",
         type=str,
         default="CSRT",
-        help="CSRT or MFT",
+        help="CSRT, MFT or RAFT",
     )
     parser.add_argument(
         "--showvis",

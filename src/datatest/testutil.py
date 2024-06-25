@@ -102,3 +102,26 @@ def chamferloss(ptsa, ptsb):
     av_dist2 = np.mean(distances2)
     dist = av_dist1 + av_dist2
     return dist
+
+def backproject_2d_points(points2d, disparities, Q, disparitypad):
+    """Backprojects 2d points to 3d; taken from STIRLoader.
+    Args:
+        points2d: npts 2
+        disparities: npts
+        Q: 4x4
+        disparitypad: scalar
+    Returns:
+        points3d: npts 3
+
+    """
+    padded_disparities = disparities + disparitypad
+
+    disppoints = np.stack(
+        (points2d[:, 0], points2d[:, 1], padded_disparities[:, 0]), axis=-1
+    )  # npts 3
+    disp_homogeneous = np.pad(
+        disppoints, ((0, 0), (0, 1)), "constant", constant_values=1
+    )
+    disp_homogeneous = disp_homogeneous @ Q.T
+    points3d = disp_homogeneous[:, :3] / disp_homogeneous[:, 3:4]
+    return points3d
