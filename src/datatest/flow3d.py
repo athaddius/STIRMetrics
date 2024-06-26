@@ -169,6 +169,7 @@ if __name__ == "__main__":
             try:
                 positions = np.array(dataset.dataset.getstartcenters())
                 _, _, positions_3d = dataset.dataset.get3DSegmentationPositions(True)
+                #print(positions_3d)
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
@@ -184,7 +185,8 @@ if __name__ == "__main__":
             endseg = np.array(endseg).sum(axis=2)
             try:
                 positions = np.array(dataset.dataset.getendcenters())
-                _, _, positions_3d = dataset.dataset.get3DSegmentationPositions(False)
+                _, _, positions_3d = dataset.dataset.get3DSegmentationPositions(start=False)
+
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
@@ -240,7 +242,7 @@ if __name__ == "__main__":
             print(f"{errorname}: {errors_imgavg}")
             print(f"{errorname}+_3d: {errors_imgavg_3d}")
             errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
-            errors_avg[modeltype+"_3d"] = errors_avg[modeltype] + errors_imgavg_3d
+            errors_avg[modeltype+"_3d"] = errors_avg[modeltype+"_3d"] + errors_imgavg_3d
             errorlists[str(dataset.dataset.basename)] = errordict
             data_used_count += 1
 

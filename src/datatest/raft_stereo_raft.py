@@ -46,14 +46,20 @@ class RAFTStereoRAFTTracker:
 
             points_scaled = points / self.scale
             end_points = self.tracker(points_scaled, startim, endim)
-            disparities = self.disparity_estimator(points_scaled, endim, endim_right)
+            pad = int(disparitypads_pair[1])//2
+            padded = torch.nn.functional.pad(endim, (pad,0,0,0), 'replicate')[:,:,:,:-pad]
+            end_points_sample_loc = torch.stack((end_points[:,:,0]+pad, end_points[:,:,1]), dim=-1)
+            disparities = self.disparity_estimator(end_points_sample_loc, padded, endim_right)
 
             estimated_endpoints = end_points * self.scale
-            estimated_disparities = disparities * self.scale
+            estimated_disparities = -disparities * self.scale
             estimated_endpoints = to_numpy(estimated_endpoints.squeeze(0))
             estimated_disparities = to_numpy(estimated_disparities.squeeze(0))
 
-            estimated_endpoints_3d = backproject_2d_points(estimated_endpoints, estimated_disparities, to_numpy(Q_pair[1][0]), to_numpy(disparitypads_pair[1]))
+            estimated_endpoints_3d = backproject_2d_points(estimated_endpoints, estimated_disparities, to_numpy(Q_pair[1][0]), 0.0) # no need to pad here, since we padded the image
+            # Some are invalid, via poor padding of the depth map. set these to 0
+            estimated_endpoints_3d[np.isinf(estimated_endpoints_3d)] = 0.0
+            #print(estimated_endpoints_3d)
 
         return estimated_endpoints, estimated_endpoints_3d
 
