@@ -53,6 +53,12 @@ def getargs():
         help="CSRT, MFT or RAFT",
     )
     parser.add_argument(
+        "--ontestingset",
+        type=int,
+        default="0",
+        help="whether on the testing set. Testing set provides no access to end segs.",
+    )
+    parser.add_argument(
         "--showvis",
         type=int,
         default="1",
@@ -163,41 +169,36 @@ if __name__ == "__main__":
             dataloader = torch.utils.data.DataLoader(
                 dataset, batch_size=args.batch_size, num_workers=0, pin_memory=True
             )
-            num_pts = 128
             startseg = np.array(dataset.dataset.getstartseg()).sum(axis=2)
-            # sometimes these throw errors
-            start3D = None  # dataset.dataset.getstartsegs3D(start=True) # N 3
-            end3D = None  # dataset.dataset.getstartsegs3D(start=False) # N 3
+            
             try:
-                positions = np.array(dataset.dataset.getstartcenters())
+                pointlist_start = np.array(dataset.dataset.getstartcenters())
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
-            if not args.showvis:
-                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device)
-                print(pointlist.shape)
-            else:
-                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device) # FIXME remove unnecessary squeeze/un
-                print(pointlist.shape)
-            endseg = dataset.dataset.getendseg()
-            endseg = np.array(endseg).sum(axis=2)
-            try:
-                positions = np.array(dataset.dataset.getendcenters())
-            except IndexError as e:
-                print(f"{e} error on dataset load, continuing")
+            pointlist_start = torch.from_numpy(pointlist_start).unsqueeze(0).to(device)
+            if pointlist_start.shape[1] <= 1:
                 continue
-            h, w = startseg.shape
-            pointlistend = torch.from_numpy(positions).to(device)
-            errors_control = pointlossunidirectional(
-                pointlist.squeeze(0), pointlistend
-            )["averagedistance"]
+            if not args.ontestingset:
+                endseg = dataset.dataset.getendseg()
+                endseg = np.array(endseg).sum(axis=2)
+                try:
+                    pointlistend = np.array(dataset.dataset.getendcenters())
+                except IndexError as e:
+                    print(f"{e} error on dataset load, continuing")
+                    continue
+                h, w = startseg.shape
+                pointlistend = torch.from_numpy(pointlistend).to(device)
+                errors_control = pointlossunidirectional(
+                    pointlist_start.squeeze(0), pointlistend
+                )["averagedistance"]
 
             if args.showvis:
                 showimage("seg_start", startseg)
                 showimage("seg_end", endseg)
                 cv2.waitKey(1)
                 end_estimates, startframe, lastframe = trackanddisplay(
-                    pointlist,
+                    pointlist_start,
                     dataloader,
                     showvis=args.showvis,
                     modeltype=modeltype,
@@ -205,7 +206,7 @@ if __name__ == "__main__":
                 )
             else:
                 end_estimates = trackanddisplay(
-                    pointlist,
+                    pointlist_start,
                     dataloader,
                     showvis=args.showvis,
                     modeltype=modeltype,
@@ -214,20 +215,21 @@ if __name__ == "__main__":
 
             positionlists[str(dataset.dataset.basename)] = end_estimates
 
-            errortype = "endpointerror"
-            print(f"DATASET_{ind}: {dataset.dataset.basename}")
-            print(f"{errortype}_control: {errors_control}")
-            errors_control_avg = errors_control_avg + errors_control
-            errordict = {}
-            errordict[f"{errortype}_control"] = errors_control
+            if not args.ontestingset: # Log endpoint error
+                errortype = "endpointerror"
+                print(f"DATASET_{ind}: {dataset.dataset.basename}")
+                print(f"{errortype}_control: {errors_control}")
+                errors_control_avg = errors_control_avg + errors_control
+                errordict = {}
+                errordict[f"{errortype}_control"] = errors_control
 
-            errors = pointlossunidirectional(end_estimates, pointlistend)
-            errors_imgavg = errors["averagedistance"]
-            errorname = f"{errortype}_{modeltype}"
-            errordict[errorname] = errors_imgavg
-            print(f"{errorname}: {errors_imgavg}")
-            errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
-            errorlists[str(dataset.dataset.basename)] = errordict
+                errors = pointlossunidirectional(end_estimates, pointlistend)
+                errors_imgavg = errors["averagedistance"]
+                errorname = f"{errortype}_{modeltype}"
+                errordict[errorname] = errors_imgavg
+                print(f"{errorname}: {errors_imgavg}")
+                errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
+                errorlists[str(dataset.dataset.basename)] = errordict
             data_used_count += 1
 
             if args.showvis:
@@ -251,25 +253,23 @@ if __name__ == "__main__":
                 showimage("startframe", startframe)
                 showimage("lastframe", imend)
                 cv2.waitKey(1)
-
-            if args.showvis:
                 track_writer.close()
         except AssertionError as e:
             print(f"error on dataset load, continuing")
 
-    print(f"TOTALS:")
-    errors_control_avg = errors_control_avg / data_used_count
-    print(f"{errortype}_control: {errors_control_avg}")
-    errordict = {}
-    errordict[f"mean_{errortype}_control"] = errors_control_avg
-    for model, avg in errors_avg.items():
-        errorname = f"mean_{errortype}_{model}"
-        error = avg / data_used_count
-        errordict[errorname] = error
-        print(f"{errorname}: {error}")
-    errorlists['total'] = errordict
-    import json
-    with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
-        json.dump(errorlists, fp)
+    if not args.ontestingset:
+        print(f"TOTALS:")
+        errors_control_avg = errors_control_avg / data_used_count
+        print(f"{errortype}_control: {errors_control_avg}")
+        errordict = {}
+        errordict[f"mean_{errortype}_control"] = errors_control_avg
+        for model, avg in errors_avg.items():
+            errorname = f"mean_{errortype}_{model}"
+            error = avg / data_used_count
+            errordict[errorname] = error
+            print(f"{errorname}: {error}")
+        errorlists['total'] = errordict
+        with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+            json.dump(errorlists, fp)
     with open(f'results/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
