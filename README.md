@@ -38,3 +38,4 @@ An extension of the flow2d that evaluates the tracking performance in 3D as well
 python datatest/flow3d.py --num_data 4 --showvis 1
 ```
 Writes output json of averaged results (3d is in mm) to a json file in the folder results.
+python datatest/calculate_error_from_json2d.py --startgt results/gt_positions_start_all_test.json --endgt results/gt_positions_end_all_test.json  --model_predictions results/positions_4CSRTtest.json
