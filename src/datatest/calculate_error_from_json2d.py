@@ -49,15 +49,14 @@ def calculate_accuracy(distances):
     distances = np.array(distances)
     num_samples = len(distances)
     accuracies = []
-    print(f"threshold: acc")
     for threshold in thresholds:
         number_below_thresh = np.sum(distances <= threshold)
         accuracy_at_thresh = number_below_thresh / num_samples
         accuracies.append(accuracy_at_thresh)
-        print(f"{threshold:02d}: {accuracy_at_thresh:0.3f}")
+        print(f"{threshold:2d} px:\t{accuracy_at_thresh:0.5f}")
 
     avg_accuracy = np.mean(accuracies)
-    print(f"Avg accuracy: {avg_accuracy}")
+    print(f"Avg:\t{avg_accuracy:0.5f}")
 
 
 
@@ -95,10 +94,16 @@ if __name__ == "__main__":
         data_used_count += 1
         print(f"Calculated distances for: {filename}")
 
-    print("CONTROL accuracy")
+    print("CONTROL")
+    print("-----")
+    print("Accuracy")
+    print("-----")
     calculate_accuracy(control_distances)
     print("----------------")
-    print("Model   accuracy")
+    print("Model")
+    print("-----")
+    print("Accuracy")
+    print("-----")
     calculate_accuracy(distances)
     
 

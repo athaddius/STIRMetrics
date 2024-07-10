@@ -32,7 +32,7 @@ class RAFTStereoRAFTTracker:
     from ipdb import iex
     @iex
     def trackpoints3D(self, pointlist, impair, impair_right, Q_pair, disparitypads_pair):
-        """ Takes in RGB image"""
+        """ Note: this is a very simplistic model. It is cutting off part of the image for the depthh map, and thus performs poorly at borders."""
         with torch.no_grad():
             startim = self.resize_and_convert_to_np(impair[0]).transpose(2, 0, 1)/255.
             startim = impair[0].permute(0, 3, 1, 2) / 255.0
@@ -60,6 +60,7 @@ class RAFTStereoRAFTTracker:
             # Some are invalid, via poor padding of the depth map. set these to 0
             estimated_endpoints_3d[np.isinf(estimated_endpoints_3d)] = 0.0
             #print(estimated_endpoints_3d)
+
 
         return estimated_endpoints, estimated_endpoints_3d
 

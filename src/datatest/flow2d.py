@@ -96,13 +96,12 @@ def trackanddisplay(
     returns pointlist at seq end"""
     num_pts = startpointlist.shape[1]
     model = modeldict[modeltype]()
-    pointlist = startpointlist
     dataloaderiter = iter(dataloader)
     startdata = todevice(next(dataloaderiter))
     assert len(startdata["ims"]) == 1  # make sure no batches
     colors = (np.random.randint(0, 255, 3 * num_pts)).reshape(num_pts, 3)
 
-    pointlist = pointlist.squeeze(0).cpu().numpy()
+    pointlist = startpointlist.cpu().numpy()
     firstframe = True
     for data in tqdm(dataloaderiter):
         nextdata = todevice(data)
@@ -176,8 +175,8 @@ if __name__ == "__main__":
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
-            pointlist_start = torch.from_numpy(pointlist_start).unsqueeze(0).to(device)
-            if pointlist_start.shape[1] <= 1:
+            pointlist_start = torch.from_numpy(pointlist_start).to(device)
+            if pointlist_start.shape[0] < 1:
                 continue
             if not args.ontestingset:
                 endseg = dataset.dataset.getendseg()
@@ -190,7 +189,7 @@ if __name__ == "__main__":
                 h, w = startseg.shape
                 pointlistend = torch.from_numpy(pointlistend).to(device)
                 errors_control = pointlossunidirectional(
-                    pointlist_start.squeeze(0), pointlistend
+                    pointlist_start, pointlistend
                 )["averagedistance"]
 
             if args.showvis:

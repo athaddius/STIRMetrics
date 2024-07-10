@@ -93,7 +93,7 @@ def trackanddisplay(
     assert len(startdata["ims"]) == 1  # make sure no batches
     colors = (np.random.randint(0, 255, 3 * num_pts)).reshape(num_pts, 3)
 
-    pointlist = pointlist.squeeze(0).cpu().numpy()
+    pointlist = pointlist.cpu().numpy()
     firstframe = True
     for data in tqdm(dataloaderiter):
         nextdata = todevice(data)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         config = json.load(f)
     args.datadir = config["datadir"]
     datasets = STIRLoader.getclips(datadir=args.datadir)
-    random.seed(1249)
+    random.seed(1220349)
     random.shuffle(datasets)
     errors_avg = defaultdict(int)
     errors_control_avg = 0
@@ -161,58 +161,53 @@ if __name__ == "__main__":
             dataloader = torch.utils.data.DataLoader(
                 dataset, batch_size=args.batch_size, num_workers=0, pin_memory=True
             )
-            num_pts = 128
             startseg = np.array(dataset.dataset.getstartseg()).sum(axis=2)
-            # sometimes these throw errors
-            start3D = None  # dataset.dataset.getstartsegs3D(start=True) # N 3
-            end3D = None  # dataset.dataset.getstartsegs3D(start=False) # N 3
             try:
-                positions = np.array(dataset.dataset.getstartcenters())
-                _, _, positions_3d = dataset.dataset.get3DSegmentationPositions(True)
-                #print(positions_3d)
+                positions_start = np.array(dataset.dataset.getstartcenters())
+                _, _, positions_3d_start = dataset.dataset.get3DSegmentationPositions(True)
+                if positions_start.shape[0] < 1:
+                    continue
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
-            if not args.showvis:
-                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device)
-                pointlist_3d = torch.from_numpy(positions_3d).unsqueeze(0).to(device)
-                print(pointlist.shape)
-            else:
-                pointlist = torch.from_numpy(positions).unsqueeze(0).to(device) # FIXME remove unnecessary squeeze/un
-                pointlist_3d = torch.from_numpy(positions_3d).unsqueeze(0).to(device)
-                print(pointlist.shape)
+            positions_start = torch.from_numpy(positions_start).to(device)
+            positions_3d_start = torch.from_numpy(positions_3d_start).to(device)
+            print(positions_start.shape)
             endseg = dataset.dataset.getendseg()
             endseg = np.array(endseg).sum(axis=2)
             try:
-                positions = np.array(dataset.dataset.getendcenters())
-                _, _, positions_3d = dataset.dataset.get3DSegmentationPositions(start=False)
+                positions_end = np.array(dataset.dataset.getendcenters())
+                _, _, positions_3d_end = dataset.dataset.get3DSegmentationPositions(start=False)
 
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
             h, w = startseg.shape
-            pointlistend = torch.from_numpy(positions).to(device)
-            pointlistend_3d = torch.from_numpy(positions_3d).to(device)
+            positions_end = torch.from_numpy(positions_end).to(device)
+            positions_3d_end = torch.from_numpy(positions_3d_end).to(device)
             errors_control = pointlossunidirectional(
-                pointlist.squeeze(0), pointlistend
+                positions_start, positions_end
             )["averagedistance"]
             errors_control_3d = pointlossunidirectional(
-                pointlist_3d.squeeze(0), pointlistend_3d
+                positions_3d_start, positions_3d_end
             )["averagedistance"]
             if args.showvis:
                 showimage("seg_start", startseg)
                 showimage("seg_end", endseg)
                 cv2.waitKey(1)
                 end_estimates, end_estimates_3d, startframe, lastframe = trackanddisplay(
-                    pointlist,
+                    positions_start,
                     dataloader,
                     showvis=args.showvis,
                     modeltype=modeltype,
                     track_writer=track_writer
                 )
+                print(positions_start.shape)
+                print(end_estimates.shape)
+                print(positions_end.shape)
             else:
                 end_estimates, end_estimates_3d = trackanddisplay(
-                    pointlist,
+                    positions_start,
                     dataloader,
                     showvis=args.showvis,
                     modeltype=modeltype,
@@ -232,8 +227,8 @@ if __name__ == "__main__":
             errordict[f"{errortype}_control"] = errors_control
             errordict[f"{errortype}_control_3d"] = errors_control_3d
 
-            errors = pointlossunidirectional(end_estimates, pointlistend)
-            errors_3d = pointlossunidirectional(end_estimates_3d, pointlistend_3d)
+            errors = pointlossunidirectional(end_estimates, positions_end)
+            errors_3d = pointlossunidirectional(end_estimates_3d, positions_3d_end)
             errors_imgavg = errors["averagedistance"]
             errors_imgavg_3d = errors_3d["averagedistance"]
             errorname = f"{errortype}_{modeltype}"
