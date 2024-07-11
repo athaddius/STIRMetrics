@@ -141,7 +141,6 @@ def trackanddisplay(
 if __name__ == "__main__":
     args = getargs()
     logging.basicConfig(level=logging.INFO)
-    #modeltype = "CSRT"
     modeltype = args.modeltype
 
     with open("config.json", "r") as f:
@@ -159,7 +158,7 @@ if __name__ == "__main__":
 
     errorlists = {}
     positionlists = {}
-    data_used_count = 0  # sometimes skips if too few
+    data_used_count = 0
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
             outdir = Path(f'./results/{ind:03d}{modeltype}_tracks.mp4')
@@ -186,7 +185,6 @@ if __name__ == "__main__":
                 except IndexError as e:
                     print(f"{e} error on dataset load, continuing")
                     continue
-                h, w = startseg.shape
                 pointlistend = torch.from_numpy(pointlistend).to(device)
                 errors_control = pointlossunidirectional(
                     pointlist_start, pointlistend

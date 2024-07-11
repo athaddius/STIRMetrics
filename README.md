@@ -42,31 +42,35 @@ Writes output json of averaged results (3d is in mm) to a json file in the folde
 
 ## Calculating Error Threshold Metrics for Challenge Evaluation
 
-Firstly, generate ground truth json locations using the following command:
+Firstly, generate ground truth json locations using the following command. Swap `write2d` for `write3d` to generate the 3D positions. Files are written to the `./results` directory.
 
 ```
 python datatest/write2dgtjson.py --num_data -1 --jsonsuffix test
 ```
 
-This files will be generated, and run independently by the organizers for the challenge.
+For challenge submissions on the test set, the ground truth location files will be generated, and run independently by the challenge organizers.
 
 
 
 
-Then generate the points predicted by your model using (select whatever you want to test for `num_data`):
+Then generate a json file of tracked points predicted by your model using (select whatever you want when testing for `num_data`, and modify the random seed for different sets).
 
 ```
 python datatest/flow2d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype <YOURMODEL> --ontestingset 1
 ```
+or for 3d:
+```
+python datatest/flow3d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype <YOURMODEL> --ontestingset 1
+```
 
-For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results. `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via flow2d. Thus we recommend not modifying the interface to this file.
+For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results for 2D (`RAFT_Stereo_RAFT` is the only type available for 3D). `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via flow2d/3d. Thus we recommend not modifying the interface to this file.
 
 
-These files (start and end gt locations) can then be passed into the metric calculator with this:
+The generated ground truth files (start and end gt locations)and your estimates can then be passed into the metric calculator with this:
 
 ```
 python datatest/calculate_error_from_json2d.py --startgt results/gt_positions_start_all_test.json --endgt results/gt_positions_end_all_test.json  --model_predictions results/positions_<numdata><YOURMODEL>test.json
+python datatest/calculate_error_from_json3d.py --startgt results/gt_3d_positions_start_all_test.json --endgt results/gt_3d_positions_end_all_test.json  --model_predictions results/positions3d_<numdata><YOURMODEL>test.json
 ```
 
-This will print threshold metrics for your model, and a control version of zero-motion. For the challenge, this script will be run by organizers on your `positions.json` file.
-
+This will print threshold metrics for your model, and a control version of zero-motion. For the challenge, this script will be run by organizers on your `positions.json` file. For the 3D submissions, we will evaluate metrics for both the 2d and 3d locations.

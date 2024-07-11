@@ -1,4 +1,4 @@
-""" calculates 2d error of model on STIR labelled dataset.
+""" calculates 3d error of model on STIR labelled dataset.
 """
 import cv2
 import numpy as np
@@ -45,7 +45,7 @@ def getargs():
 
 
 def calculate_accuracy(distances):
-    thresholds = [4, 8, 16, 32, 64]
+    thresholds = [2, 4, 8, 16, 32]
     distances = np.array(distances)
     num_samples = len(distances)
     accuracies = []
@@ -53,7 +53,7 @@ def calculate_accuracy(distances):
         number_below_thresh = np.sum(distances <= threshold)
         accuracy_at_thresh = number_below_thresh / num_samples
         accuracies.append(accuracy_at_thresh)
-        print(f"{threshold:2d} px:\t{accuracy_at_thresh:0.5f}")
+        print(f"{threshold:2d} mm:\t{accuracy_at_thresh:0.5f}")
 
     avg_accuracy = np.mean(accuracies)
     print(f"Avg:\t{avg_accuracy:0.5f}")

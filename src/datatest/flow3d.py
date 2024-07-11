@@ -61,6 +61,12 @@ def getargs():
         default="8",
         help="number of sequences to use",
     )
+    parser.add_argument(
+        "--ontestingset",
+        type=int,
+        default="0",
+        help="whether on the testing set. Testing set provides no access to end segs.",
+    )
     args = parser.parse_args()
     args.batch_size = 1  # do not change, only one for running
     return args
@@ -132,14 +138,13 @@ def trackanddisplay(
 if __name__ == "__main__":
     args = getargs()
     logging.basicConfig(level=logging.INFO)
-    #modeltype = "CSRT"
     modeltype = args.modeltype
 
     with open("config.json", "r") as f:
         config = json.load(f)
     args.datadir = config["datadir"]
     datasets = STIRLoader.getclips(datadir=args.datadir)
-    random.seed(1220349)
+    random.seed(1249)
     random.shuffle(datasets)
     errors_avg = defaultdict(int)
     errors_control_avg = 0
@@ -152,7 +157,7 @@ if __name__ == "__main__":
     errorlists = {}
     positionlists = {}
     positionlists_3d = {}
-    data_used_count = 0  # sometimes skips if too few
+    data_used_count = 0
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
             outdir = Path(f'./results/{ind:03d}{modeltype}_tracks.mp4')
@@ -164,33 +169,33 @@ if __name__ == "__main__":
             startseg = np.array(dataset.dataset.getstartseg()).sum(axis=2)
             try:
                 positions_start = np.array(dataset.dataset.getstartcenters())
-                _, _, positions_3d_start = dataset.dataset.get3DSegmentationPositions(True)
                 if positions_start.shape[0] < 1:
                     continue
+                _, _, positions_3d_start = dataset.dataset.get3DSegmentationPositions(True)
+
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
                 continue
             positions_start = torch.from_numpy(positions_start).to(device)
             positions_3d_start = torch.from_numpy(positions_3d_start).to(device)
-            print(positions_start.shape)
-            endseg = dataset.dataset.getendseg()
-            endseg = np.array(endseg).sum(axis=2)
-            try:
-                positions_end = np.array(dataset.dataset.getendcenters())
-                _, _, positions_3d_end = dataset.dataset.get3DSegmentationPositions(start=False)
+            if not args.ontestingset:
+                endseg = dataset.dataset.getendseg()
+                endseg = np.array(endseg).sum(axis=2)
+                try:
+                    positions_end = np.array(dataset.dataset.getendcenters())
+                    _, _, positions_3d_end = dataset.dataset.get3DSegmentationPositions(start=False)
 
-            except IndexError as e:
-                print(f"{e} error on dataset load, continuing")
-                continue
-            h, w = startseg.shape
-            positions_end = torch.from_numpy(positions_end).to(device)
-            positions_3d_end = torch.from_numpy(positions_3d_end).to(device)
-            errors_control = pointlossunidirectional(
-                positions_start, positions_end
-            )["averagedistance"]
-            errors_control_3d = pointlossunidirectional(
-                positions_3d_start, positions_3d_end
-            )["averagedistance"]
+                except IndexError as e:
+                    print(f"{e} error on dataset load, continuing")
+                    continue
+                positions_end = torch.from_numpy(positions_end).to(device)
+                positions_3d_end = torch.from_numpy(positions_3d_end).to(device)
+                errors_control = pointlossunidirectional(
+                    positions_start, positions_end
+                )["averagedistance"]
+                errors_control_3d = pointlossunidirectional(
+                    positions_3d_start, positions_3d_end
+                )["averagedistance"]
             if args.showvis:
                 showimage("seg_start", startseg)
                 showimage("seg_end", endseg)
@@ -202,9 +207,6 @@ if __name__ == "__main__":
                     modeltype=modeltype,
                     track_writer=track_writer
                 )
-                print(positions_start.shape)
-                print(end_estimates.shape)
-                print(positions_end.shape)
             else:
                 end_estimates, end_estimates_3d = trackanddisplay(
                     positions_start,
@@ -217,28 +219,29 @@ if __name__ == "__main__":
             positionlists[str(dataset.dataset.basename)] = end_estimates
             positionlists_3d[str(dataset.dataset.basename)] = end_estimates_3d
 
-            errortype = "endpointerror"
-            print(f"DATASET_{ind}: {dataset.dataset.basename}")
-            print(f"{errortype}_control: {errors_control}")
-            print(f"{errortype}_control_3d: {errors_control_3d}")
-            errors_control_avg = errors_control_avg + errors_control
-            errors_control_avg_3d = errors_control_avg_3d + errors_control_3d
-            errordict = {}
-            errordict[f"{errortype}_control"] = errors_control
-            errordict[f"{errortype}_control_3d"] = errors_control_3d
+            if not args.ontestingset:
+                errortype = "endpointerror"
+                print(f"DATASET_{ind}: {dataset.dataset.basename}")
+                print(f"{errortype}_control: {errors_control}")
+                print(f"{errortype}_control_3d: {errors_control_3d}")
+                errors_control_avg = errors_control_avg + errors_control
+                errors_control_avg_3d = errors_control_avg_3d + errors_control_3d
+                errordict = {}
+                errordict[f"{errortype}_control"] = errors_control
+                errordict[f"{errortype}_control_3d"] = errors_control_3d
 
-            errors = pointlossunidirectional(end_estimates, positions_end)
-            errors_3d = pointlossunidirectional(end_estimates_3d, positions_3d_end)
-            errors_imgavg = errors["averagedistance"]
-            errors_imgavg_3d = errors_3d["averagedistance"]
-            errorname = f"{errortype}_{modeltype}"
-            errordict[errorname] = errors_imgavg
-            errordict[errorname+"_3d"] = errors_imgavg_3d
-            print(f"{errorname}: {errors_imgavg}")
-            print(f"{errorname}+_3d: {errors_imgavg_3d}")
-            errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
-            errors_avg[modeltype+"_3d"] = errors_avg[modeltype+"_3d"] + errors_imgavg_3d
-            errorlists[str(dataset.dataset.basename)] = errordict
+                errors = pointlossunidirectional(end_estimates, positions_end)
+                errors_3d = pointlossunidirectional(end_estimates_3d, positions_3d_end)
+                errors_imgavg = errors["averagedistance"]
+                errors_imgavg_3d = errors_3d["averagedistance"]
+                errorname = f"{errortype}_{modeltype}"
+                errordict[errorname] = errors_imgavg
+                errordict[errorname+"_3d"] = errors_imgavg_3d
+                print(f"{errorname}: {errors_imgavg}")
+                print(f"{errorname}_3d: {errors_imgavg_3d}")
+                errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
+                errors_avg[modeltype+"_3d"] = errors_avg[modeltype+"_3d"] + errors_imgavg_3d
+                errorlists[str(dataset.dataset.basename)] = errordict
             data_used_count += 1
 
             if args.showvis:
@@ -268,23 +271,23 @@ if __name__ == "__main__":
         except AssertionError as e:
             print(f"error on dataset load, continuing")
 
-    print(f"TOTALS:")
-    errors_control_avg = errors_control_avg / data_used_count
-    errors_control_avg_3d = errors_control_avg_3d / data_used_count
-    print(f"{errortype}_control: {errors_control_avg}")
-    print(f"{errortype}_control_3d: {errors_control_avg_3d}")
-    errordict = {}
-    errordict[f"mean_{errortype}_control"] = errors_control_avg
-    errordict[f"mean_{errortype}_control_3d"] = errors_control_avg_3d
-    for model, avg in errors_avg.items():
-        errorname = f"mean_{errortype}_{model}"
-        error = avg / data_used_count
-        errordict[errorname] = error
-        print(f"{errorname}: {error}")
-    errorlists['total'] = errordict
-    import json
-    with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
-        json.dump(errorlists, fp)
+    if not args.ontestingset:
+        print(f"TOTALS:")
+        errors_control_avg = errors_control_avg / data_used_count
+        errors_control_avg_3d = errors_control_avg_3d / data_used_count
+        print(f"{errortype}_control: {errors_control_avg}")
+        print(f"{errortype}_control_3d: {errors_control_avg_3d}")
+        errordict = {}
+        errordict[f"mean_{errortype}_control"] = errors_control_avg
+        errordict[f"mean_{errortype}_control_3d"] = errors_control_avg_3d
+        for model, avg in errors_avg.items():
+            errorname = f"mean_{errortype}_{model}"
+            error = avg / data_used_count
+            errordict[errorname] = error
+            print(f"{errorname}: {error}")
+        errorlists['total'] = errordict
+        with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+            json.dump(errorlists, fp)
     with open(f'results/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
     with open(f'results/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
