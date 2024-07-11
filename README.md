@@ -1,6 +1,6 @@
 # STIRMetrics
 
-A metric evaluation framework for STIR. Currently uses CSRT as the implemented model.
+A metric evaluation framework for STIR. Provides CSRT, MFT, and RAFT baselines for 2D, and a simple RAFT baseline for 3D.
 
 ## Requirements
 
@@ -13,14 +13,16 @@ git clone STIRMetrics
 cd STIRMetrics
 ```
 
-## clicktracks:
+## Utilities
+
+### clicktracks:
 a click-and track application for visualizing tracker on STIR
 
 ```
 python datatest/clicktracks.py --num_data 3
 ```
 
-## flow2d:
+### flow2d:
 
 Uses the labelled STIR segments to evaluate tracking performance of given model.
 
@@ -30,7 +32,7 @@ python datatest/flow2d.py --num_data 4 --showvis 1
 Writes output json of averaged results to a json file in the folder results.
 
 
-## flow3d:
+### flow3d:
 
 An extension of the flow2d that evaluates the tracking performance in 3D as well.
 
