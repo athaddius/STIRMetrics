@@ -4,11 +4,13 @@ A metric evaluation framework for STIR. Provides CSRT, MFT, and RAFT baselines f
 
 ## Requirements
 
-STIRLoader, cloned at the same directory level
+(STIRLoader)[https://github.com/athaddius/STIRLoader] pip installed, cloned at the same directory level.
+If using MFT, install the MFT adapter (MFT_STIR)[https://github.com/athaddius/STIRLoader], or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
-set datadir in config.json to point at extracted STIR directory
+Set datadir in config.json to point at extracted STIR validation dataset directory.
+
+
 ```
-git clone STIRLoader
 git clone STIRMetrics
 cd STIRMetrics
 ```
@@ -16,7 +18,7 @@ cd STIRMetrics
 ## Utilities
 
 ### clicktracks:
-a click-and track application for visualizing tracker on STIR
+A click-and track application for visualizing a tracker on STIR.
 
 ```
 python datatest/clicktracks.py --num_data 3
@@ -68,7 +70,7 @@ python datatest/flow3d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype
 For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results for 2D (`RAFT_Stereo_RAFT` is the only type available for 3D). `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via flow2d/3d. Thus we recommend not modifying the interface to this file.
 
 
-The generated ground truth files (start and end gt locations)and your estimates can then be passed into the metric calculator with this:
+The generated ground truth files (start and end gt locations) and your estimates can then be passed into the metric calculator with this:
 
 ```
 python datatest/calculate_error_from_json2d.py --startgt results/gt_positions_start_all_test.json --endgt results/gt_positions_end_all_test.json  --model_predictions results/positions_<numdata><YOURMODEL>test.json
