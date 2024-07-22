@@ -4,8 +4,8 @@ A metric evaluation framework for STIR. Provides CSRT, MFT, and RAFT baselines f
 
 ## Requirements
 
-(STIRLoader)[https://github.com/athaddius/STIRLoader] pip installed, cloned at the same directory level.
-If using MFT, install the MFT adapter (MFT_STIR)[https://github.com/athaddius/STIRLoader], or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
+[STIRLoader](https://github.com/athaddius/STIRLoader) pip installed, cloned at the same directory level.
+If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/STIRLoader), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
 Set datadir in config.json to point at extracted STIR validation dataset directory.
 
