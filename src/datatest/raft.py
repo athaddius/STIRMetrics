@@ -22,7 +22,7 @@ class RAFTTracker:
             self.tracker = torch.jit.load(TORCHSCRIPTFILE).to(self.device)
             self.resize = torchvision.transforms.Resize((self.internalimsize[1], self.internalimsize[0]))
         else:
-            self.tracker = ort.InferenceSession(ONNXFILE)
+            self.tracker = ort.InferenceSession(ONNXFILE, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
 
     def resize_and_convert_to_np(self, im):
         """ Takes a tensor, and resizes/converts it"""

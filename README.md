@@ -1,19 +1,36 @@
 # STIRMetrics
 
-A metric evaluation framework for STIR. Provides CSRT, MFT, and RAFT baselines for 2D, and a simple RAFT baseline for 3D.
+STIRMetrics is an evaluation framework for the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617) accuracy metrics. This repo provides CSRT, MFT, and RAFT baselines for 2D, and a simple RAFT baseline for 3D tracking. Modify the code as needed to run your tracking algorithm and output point tracks.
 
-## Requirements
+## Registration and Prizes
 
-[STIRLoader](https://github.com/athaddius/STIRLoader) pip installed, cloned at the same directory level.
+See the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617) for details.
+
+## Usage
+
+### In your python environment (useful for visualization applications)
+
+Install [STIRLoader](https://github.com/athaddius/STIRLoader) using pip.
 If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/STIRLoader), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
-Set datadir in config.json to point at extracted STIR validation dataset directory.
+Set `datadir` in config.json to point to the extracted STIR validation dataset directory.
 
 
 ```
 git clone STIRMetrics
-cd STIRMetrics
+cd STIRMetrics/src
 ```
+All commands can be run from the source directory.
+
+### Usage with docker
+
+Follow the docker installation instructions at [STIRHoloscan](https://github.com/athaddius/STIRHoloscan). Afterwards, you can use the rundocker script here:
+```
+./rundocker.sh <path_to_data>
+cd src
+```
+
+Now you should be able to run the same commands (with visualization disabled `-showvis 0`).
 
 ## Utilities
 
