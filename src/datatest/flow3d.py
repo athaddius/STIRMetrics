@@ -143,6 +143,7 @@ if __name__ == "__main__":
     with open("config.json", "r") as f:
         config = json.load(f)
     args.datadir = config["datadir"]
+    args.outputdir = config["outputdir"]
     datasets = STIRLoader.getclips(datadir=args.datadir)
     random.seed(1249)
     random.shuffle(datasets)
@@ -160,7 +161,7 @@ if __name__ == "__main__":
     data_used_count = 0
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
-            outdir = Path(f'./results/{ind:03d}{modeltype}_tracks.mp4')
+            outdir = Path(f'{args.outputdir}/{ind:03d}{modeltype}_tracks.mp4')
             if args.showvis:
                 track_writer = vu.VideoWriter(outdir, fps=26, images_export=False)
             dataloader = torch.utils.data.DataLoader(
@@ -286,9 +287,9 @@ if __name__ == "__main__":
             errordict[errorname] = error
             print(f"{errorname}: {error}")
         errorlists['total'] = errordict
-        with open(f'results/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+        with open(f'{args.outputdir}/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
             json.dump(errorlists, fp)
-    with open(f'results/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+    with open(f'{args.outputdir}/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
-    with open(f'results/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+    with open(f'{args.outputdir}/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
         json.dump(positionlists_3d, fp, cls=NumpyEncoder)

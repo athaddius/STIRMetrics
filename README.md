@@ -13,7 +13,9 @@ See the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617
 Install [STIRLoader](https://github.com/athaddius/STIRLoader) using pip.
 If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/STIRLoader), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
-Set `datadir` in config.json to point to the extracted STIR validation dataset directory.
+Configuration: Edit config.json to give the STIR dataset directory and the output directory.
+Set `datadir` to point to the extracted STIR validation dataset directory.
+Set `outputdir` to point to a folder in which the output estimates will be written.
 
 
 ```
@@ -26,7 +28,7 @@ All commands can be run from the source directory.
 
 Follow the docker installation instructions at [STIRHoloscan](https://github.com/athaddius/STIRHoloscan). Afterwards, you can use the rundocker script here:
 ```
-./rundocker.sh <path_to_data>
+./rundocker.sh <path_to_data> <path_to_outputdir>
 cd src
 ```
 

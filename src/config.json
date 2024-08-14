@@ -1,3 +1,4 @@
 {
-"datadir": "/workspace/data"
+"datadir": "/workspace/data",
+"outputdir": "/workspace/output"
 }

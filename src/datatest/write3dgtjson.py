@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     continue
                 _, _, pointlist_3d_end = dataset.dataset.get3DSegmentationPositions(start=False)
             except IndexError as e:
-                print(f"'{e}' No segments for matches, continuing. No need to worry")
+                print(f"'{e}' {dataset.dataset.basename} No segments for matches, continuing. No need to worry")
                 continue
             positionlists_gt_3d_start[str(dataset.dataset.basename)] = pointlist_3d_start
             positionlists_gt_3d_end[str(dataset.dataset.basename)] = pointlist_3d_end
