@@ -1,8 +1,8 @@
 # STIRMetrics
 
-STIRMetrics is an evaluation framework for the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617) accuracy metrics. This repo provides CSRT, MFT, and RAFT baselines for 2D, and a simple RAFT baseline for 3D tracking. Modify the code as needed to run your tracking algorithm and output point tracks.
+STIRMetrics is an evaluation framework for the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617) accuracy metrics to evaluate point tracking in surgical scenarios. STIRMetrics provides baselines to get started. For 2D, we provide implementations of CSRT, MFT, and RAFT. For 3D, we provide a simple RAFT+RAFT-Stereo method. Modify the code as needed to run your tracking algorithm and output point tracks.
 
-## Registration and Prizes
+## Registration, Prizes, and Submission
 
 See the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617) for details.
 
@@ -13,7 +13,7 @@ See the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617
 Install [STIRLoader](https://github.com/athaddius/STIRLoader) using pip.
 If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/STIRLoader), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
-Configuration: Edit config.json to give the STIR dataset directory and the output directory.
+**Configuration:** Edit config.json to give the STIR dataset directory and the output directory.
 Set `datadir` to point to the extracted STIR validation dataset directory.
 Set `outputdir` to point to a folder in which the output estimates will be written.
 
@@ -22,7 +22,8 @@ Set `outputdir` to point to a folder in which the output estimates will be writt
 git clone STIRMetrics
 cd STIRMetrics/src
 ```
-All commands can be run from the source directory.
+
+All commands can be run from the `src` directory.
 
 ### Usage with docker
 
@@ -32,12 +33,12 @@ Follow the docker installation instructions at [STIRHoloscan](https://github.com
 cd src
 ```
 
-Now you should be able to run the same commands (with visualization disabled `-showvis 0`).
+Now you should be able to run the same commands (with visualization disabled via passing the `-showvis 0` flag to the python applications).
 
 ## Utilities
 
 ### clicktracks:
-A click-and track application for visualizing a tracker on STIR.
+A click-and track application for visualizing a tracker on STIR. Example usage to track on three clips:
 
 ```
 python datatest/clicktracks.py --num_data 3
@@ -50,7 +51,7 @@ Uses the labelled STIR segments to evaluate tracking performance of given model.
 ```
 python datatest/flow2d.py --num_data 4 --showvis 1
 ```
-Writes output json of averaged results to a json file in the folder results.
+This produces an output json of point locations to the output directory.
 
 
 ### flow3d:
@@ -60,7 +61,7 @@ An extension of the flow2d that evaluates the tracking performance in 3D as well
 ```
 python datatest/flow3d.py --num_data 4 --showvis 1
 ```
-Writes output json of averaged results (3d is in mm) to a json file in the folder results.
+This produces output json files of point locations in 2D and 3D (in mm) to the output directory.
 
 
 ## Calculating Error Threshold Metrics for Challenge Evaluation
@@ -86,7 +87,7 @@ or for 3d:
 python datatest/flow3d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype <YOURMODEL> --ontestingset 1
 ```
 
-For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results for 2D (`RAFT_Stereo_RAFT` is the only type available for 3D). `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via flow2d/3d. Thus we recommend not modifying the interface to this file.
+For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results for 2D (`RAFT_Stereo_RAFT` is the only modeltype baseline available for 3D). `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via the flow2d/3d commands. Thus we recommend not modifying the command-line interface to this file.
 
 
 The generated ground truth files (start and end gt locations) and your estimates can then be passed into the metric calculator with this:
@@ -96,4 +97,4 @@ python datatest/calculate_error_from_json2d.py --startgt results/gt_positions_st
 python datatest/calculate_error_from_json3d.py --startgt results/gt_3d_positions_start_all_test.json --endgt results/gt_3d_positions_end_all_test.json  --model_predictions results/positions3d_<numdata><YOURMODEL>test.json
 ```
 
-This will print threshold metrics for your model, and a control version of zero-motion. For the challenge, this script will be run by organizers on your `positions.json` file. For the 3D submissions, we will evaluate metrics for both the 2d and 3d locations.
+This will print threshold metrics for your model, alongside metrics for control version of zero-motion. For the challenge, this script will be run by organizers on your `positions.json` file. For the 3D submissions, we will evaluate metrics for both the 2d and 3d locations.
