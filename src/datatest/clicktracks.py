@@ -188,6 +188,7 @@ if __name__ == "__main__":
     num_data_name = num_data
     if num_data_name == -1:
         num_data_name = "all"
+        num_data = len(datasets)
     cv2.namedWindow("imagetrack")
     cv2.setMouseCallback("imagetrack", draw_circle)
     for ind, dataset in enumerate(datasets[:num_data]):

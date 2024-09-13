@@ -156,6 +156,7 @@ if __name__ == "__main__":
     num_data_name = num_data
     if num_data_name == -1:
         num_data_name = "all"
+        num_data = len(datasets)
 
     errorlists = {}
     positionlists = {}
