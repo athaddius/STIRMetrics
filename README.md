@@ -11,7 +11,7 @@ See the [STIR Challenge](https://www.synapse.org/Synapse:syn54126082/wiki/626617
 ### In your python environment (useful for visualization applications)
 
 Install [STIRLoader](https://github.com/athaddius/STIRLoader) using pip.
-If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/STIRLoader), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
+If using MFT, install the MFT adapter [MFT_STIR](https://github.com/athaddius/MFT_STIR), or if you would like to run models without MFT, comment out all usages of MFT from the codebase.
 
 **Configuration:** Edit config.json to give the STIR dataset directory and the output directory.
 Set `datadir` to point to the extracted STIR validation dataset directory.
