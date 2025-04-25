@@ -4,13 +4,13 @@ FROM ${BASE_IMAGE} AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN cd /tmp/ && git clone https://github.com/athaddius/MFT_STIR.git \
-    && cd MFT_STIR && pip install .
+RUN cd /tmp/ && git clone https://github.com/athaddius/MFT_STIR.git && git checkout develop
+    #&& cd MFT_STIR && pip install .
 
 # For STIRLoader
 RUN mkdir -p /tmp \
-    && cd /tmp/ && git clone https://github.com/athaddius/STIRLoader.git \
-    && cd STIRLoader && pip install .
+    && cd /tmp/ && git clone https://github.com/athaddius/STIRLoader.git && git checkout develop
+    #&& cd STIRLoader && pip install .
 RUN pip install torchvision onnxruntime-gpu
 RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg libsm6 libxext6
 
