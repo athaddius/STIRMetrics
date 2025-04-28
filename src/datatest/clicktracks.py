@@ -183,6 +183,8 @@ if __name__ == "__main__":
     modeltype = args.modeltype
 
     datasets = STIRLoader.getclips(datadir=args.datadir)
+    if len(datasets) == 0:
+        print(f"No data found at {args.datadir}, exiting")
     random.shuffle(datasets)
     num_data = args.num_data
     num_data_name = num_data
