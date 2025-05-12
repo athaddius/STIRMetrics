@@ -1,5 +1,6 @@
-""" calculates error of model on STIR labelled dataset.
+"""calculates error of model on STIR labelled dataset.
 Averages nearest endpoint error over clips"""
+
 import cv2
 import numpy as np
 import json
@@ -19,14 +20,17 @@ from testutil import *
 import raft_stereo_raft
 import mft
 import MFT.utils.vis_utils as vu
+from latency_logger import LatencyLogger, LogLatency
 
 modeldict = {"RAFT_Stereo_RAFT": raft_stereo_raft.RAFTStereoRAFTTracker}
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
 
 def convert_to_opencv(image):
     """ " converts N im tensor to numpy in BGR"""
@@ -67,6 +71,12 @@ def getargs():
         default="0",
         help="whether on the testing set. Testing set provides no access to end segs.",
     )
+    parser.add_argument(
+        "--first_n_frames_to_skip_for_latency_stats",
+        type=int,
+        default="15",
+        help="number of frames to skip for latency stats",
+    )
     args = parser.parse_args()
     args.batch_size = 1  # do not change, only one for running
     return args
@@ -83,11 +93,12 @@ def drawpoints(im, points, color):
 def trackanddisplay(
     startpointlist,
     dataloader,
+    sequence_name,
     radius=3,
     thickness=-1,
     showvis=False,
     modeltype="CSRT",
-    track_writer=None
+    track_writer=None,
 ):
     """tracks and displays pointlist over time
     returns pointlist at seq end"""
@@ -114,7 +125,10 @@ def trackanddisplay(
             )
             firstframe = False
 
-        pointlist, pointlist3d = model.trackpoints3D(pointlist, ims_ori_pair, ims_ori_pair_right, Q_pair, disparitypads_pair)
+        with LogLatency(name=sequence_name):
+            pointlist, pointlist3d = model.trackpoints3D(
+                pointlist, ims_ori_pair, ims_ori_pair_right, Q_pair, disparitypads_pair
+            )
         startdata = nextdata
         if showvis:
             imend = convert_to_opencv(ims_ori_pair[1])
@@ -130,9 +144,7 @@ def trackanddisplay(
         lastframe = convert_to_opencv(ims_ori_pair[1])
         return pointlist, pointlist3d, startframe, lastframe
     else:
-        return pointlist, pointlist3d 
-
-
+        return pointlist, pointlist3d
 
 
 if __name__ == "__main__":
@@ -162,7 +174,7 @@ if __name__ == "__main__":
     data_used_count = 0
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
-            outdir = Path(f'{args.outputdir}/{ind:03d}{modeltype}_tracks.mp4')
+            outdir = Path(f"{args.outputdir}/{ind:03d}{modeltype}_tracks.mp4")
             if args.showvis:
                 track_writer = vu.VideoWriter(outdir, fps=26, images_export=False)
             dataloader = torch.utils.data.DataLoader(
@@ -173,7 +185,9 @@ if __name__ == "__main__":
                 positions_start = np.array(dataset.dataset.getstartcenters())
                 if positions_start.shape[0] < 1:
                     continue
-                _, _, positions_3d_start = dataset.dataset.get3DSegmentationPositions(True)
+                _, _, positions_3d_start = dataset.dataset.get3DSegmentationPositions(
+                    True
+                )
 
             except IndexError as e:
                 print(f"{e} error on dataset load, continuing")
@@ -185,7 +199,9 @@ if __name__ == "__main__":
                 endseg = np.array(endseg).sum(axis=2)
                 try:
                     positions_end = np.array(dataset.dataset.getendcenters())
-                    _, _, positions_3d_end = dataset.dataset.get3DSegmentationPositions(start=False)
+                    _, _, positions_3d_end = dataset.dataset.get3DSegmentationPositions(
+                        start=False
+                    )
 
                 except IndexError as e:
                     print(f"{e} error on dataset load, continuing")
@@ -202,21 +218,24 @@ if __name__ == "__main__":
                 showimage("seg_start", startseg)
                 showimage("seg_end", endseg)
                 cv2.waitKey(1)
-                end_estimates, end_estimates_3d, startframe, lastframe = trackanddisplay(
-                    positions_start,
-                    dataloader,
-                    showvis=args.showvis,
-                    modeltype=modeltype,
-                    track_writer=track_writer
+                end_estimates, end_estimates_3d, startframe, lastframe = (
+                    trackanddisplay(
+                        positions_start,
+                        dataloader,
+                        sequence_name=str(dataset.dataset.basename),
+                        showvis=args.showvis,
+                        modeltype=modeltype,
+                        track_writer=track_writer,
+                    )
                 )
             else:
                 end_estimates, end_estimates_3d = trackanddisplay(
                     positions_start,
                     dataloader,
+                    sequence_name=str(dataset.dataset.basename),
                     showvis=args.showvis,
                     modeltype=modeltype,
                 )
-
 
             positionlists[str(dataset.dataset.basename)] = end_estimates
             positionlists_3d[str(dataset.dataset.basename)] = end_estimates_3d
@@ -238,11 +257,13 @@ if __name__ == "__main__":
                 errors_imgavg_3d = errors_3d["averagedistance"]
                 errorname = f"{errortype}_{modeltype}"
                 errordict[errorname] = errors_imgavg
-                errordict[errorname+"_3d"] = errors_imgavg_3d
+                errordict[errorname + "_3d"] = errors_imgavg_3d
                 print(f"{errorname}: {errors_imgavg}")
                 print(f"{errorname}_3d: {errors_imgavg_3d}")
                 errors_avg[modeltype] = errors_avg[modeltype] + errors_imgavg
-                errors_avg[modeltype+"_3d"] = errors_avg[modeltype+"_3d"] + errors_imgavg_3d
+                errors_avg[modeltype + "_3d"] = (
+                    errors_avg[modeltype + "_3d"] + errors_imgavg_3d
+                )
                 errorlists[str(dataset.dataset.basename)] = errordict
             data_used_count += 1
 
@@ -260,9 +281,7 @@ if __name__ == "__main__":
                     if len(displacement) == 1:
                         print(displacement)
                         continue
-                    imend = cv2.line(
-                        imend, pt, pt + displacement, color, thickness=2
-                    )
+                    imend = cv2.line(imend, pt, pt + displacement, color, thickness=2)
 
                 showimage("startframe", startframe)
                 showimage("lastframe", imend)
@@ -287,10 +306,26 @@ if __name__ == "__main__":
             error = avg / data_used_count
             errordict[errorname] = error
             print(f"{errorname}: {error}")
-        errorlists['total'] = errordict
-        with open(f'{args.outputdir}/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+        errorlists["total"] = errordict
+        with open(
+            f"{args.outputdir}/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json",
+            "w",
+        ) as fp:
             json.dump(errorlists, fp)
-    with open(f'{args.outputdir}/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+    with open(
+        f"{args.outputdir}/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json",
+        "w",
+    ) as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
-    with open(f'{args.outputdir}/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+    with open(
+        f"{args.outputdir}/positions3d_{num_data_name}{modeltype}{args.jsonsuffix}.json",
+        "w",
+    ) as fp:
         json.dump(positionlists_3d, fp, cls=NumpyEncoder)
+    LatencyLogger.export_latencies_to_json(
+        f"{args.outputdir}/latencies_{num_data_name}{modeltype}{args.jsonsuffix}.json"
+    )
+    LatencyLogger.export_latency_stats_to_json(
+        f"{args.outputdir}/latency_stats_{num_data_name}{modeltype}{args.jsonsuffix}.json",
+        first_n_frames_to_skip=args.first_n_frames_to_skip_for_latency_stats,
+    )

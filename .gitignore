@@ -2,3 +2,5 @@ viaprojects/
 *.json
 *.swp
 datatest/__pycache__
+*.pyc
+

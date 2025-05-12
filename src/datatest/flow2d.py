@@ -1,5 +1,6 @@
-""" calculates error of model on STIR labelled dataset.
+"""calculates error of model on STIR labelled dataset.
 Averages nearest endpoint error over clips"""
+
 import cv2
 import numpy as np
 import json
@@ -20,16 +21,21 @@ import csrt
 import mft
 import raft
 import MFT.utils.vis_utils as vu
+from latency_logger import LatencyLogger, LogLatency
 
-modeldict = {"MFT": mft.MFTTracker,
-           "CSRT": csrt.CSRTMultiple,
-           "RAFT": raft.RAFTTracker,}
+modeldict = {
+    "MFT": mft.MFTTracker,
+    "CSRT": csrt.CSRTMultiple,
+    "RAFT": raft.RAFTTracker,
+}
+
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
 
 def convert_to_opencv(image):
     """ " converts N im tensor to numpy in BGR"""
@@ -70,6 +76,12 @@ def getargs():
         default="8",
         help="number of sequences to use",
     )
+    parser.add_argument(
+        "--first_n_frames_to_skip_for_latency_stats",
+        type=int,
+        default="15",
+        help="number of frames to skip for latency stats",
+    )
     args = parser.parse_args()
     args.batch_size = 1  # do not change, only one for running
     return args
@@ -86,11 +98,12 @@ def drawpoints(im, points, color):
 def trackanddisplay(
     startpointlist,
     dataloader,
+    sequence_name,
     radius=3,
     thickness=-1,
     showvis=False,
     modeltype="CSRT",
-    track_writer=None
+    track_writer=None,
 ):
     """tracks and displays pointlist over time
     returns pointlist at seq end"""
@@ -117,7 +130,9 @@ def trackanddisplay(
             )
             firstframe = False
 
-        pointlist = model.trackpoints2D(pointlist, ims_ori_pair)
+        with LogLatency(name=sequence_name):
+            pointlist = model.trackpoints2D(pointlist, ims_ori_pair)
+
         startdata = nextdata
         if showvis:
             imend = convert_to_opencv(ims_ori_pair[1])
@@ -134,8 +149,6 @@ def trackanddisplay(
         return pointlist, startframe, lastframe
     else:
         return pointlist
-
-
 
 
 if __name__ == "__main__":
@@ -163,14 +176,14 @@ if __name__ == "__main__":
     data_used_count = 0
     for ind, dataset in enumerate(datasets[:num_data]):
         try:
-            outdir = Path(f'{args.outdir}/{ind:03d}{modeltype}_tracks.mp4')
+            outdir = Path(f"{args.outdir}/{ind:03d}{modeltype}_tracks.mp4")
             if args.showvis:
                 track_writer = vu.VideoWriter(outdir, fps=26, images_export=False)
             dataloader = torch.utils.data.DataLoader(
                 dataset, batch_size=args.batch_size, num_workers=0, pin_memory=True
             )
             startseg = np.array(dataset.dataset.getstartseg()).sum(axis=2)
-            
+
             try:
                 pointlist_start = np.array(dataset.dataset.getstartcenters())
             except IndexError as e:
@@ -188,9 +201,9 @@ if __name__ == "__main__":
                     print(f"{e} error on dataset load, continuing")
                     continue
                 pointlistend = torch.from_numpy(pointlistend).to(device)
-                errors_control = pointlossunidirectional(
-                    pointlist_start, pointlistend
-                )["averagedistance"]
+                errors_control = pointlossunidirectional(pointlist_start, pointlistend)[
+                    "averagedistance"
+                ]
 
             if args.showvis:
                 showimage("seg_start", startseg)
@@ -199,22 +212,23 @@ if __name__ == "__main__":
                 end_estimates, startframe, lastframe = trackanddisplay(
                     pointlist_start,
                     dataloader,
+                    sequence_name=str(dataset.dataset.basename),
                     showvis=args.showvis,
                     modeltype=modeltype,
-                    track_writer=track_writer
+                    track_writer=track_writer,
                 )
             else:
                 end_estimates = trackanddisplay(
                     pointlist_start,
                     dataloader,
+                    sequence_name=str(dataset.dataset.basename),
                     showvis=args.showvis,
                     modeltype=modeltype,
                 )
 
-
             positionlists[str(dataset.dataset.basename)] = end_estimates
 
-            if not args.ontestingset: # Log endpoint error
+            if not args.ontestingset:  # Log endpoint error
                 errortype = "endpointerror"
                 print(f"DATASET_{ind}: {dataset.dataset.basename}")
                 print(f"{errortype}_control: {errors_control}")
@@ -245,9 +259,7 @@ if __name__ == "__main__":
                     if len(displacement) == 1:
                         print(displacement)
                         continue
-                    imend = cv2.line(
-                        imend, pt, pt + displacement, color, thickness=2
-                    )
+                    imend = cv2.line(imend, pt, pt + displacement, color, thickness=2)
 
                 showimage("startframe", startframe)
                 showimage("lastframe", imend)
@@ -267,8 +279,20 @@ if __name__ == "__main__":
             error = avg / data_used_count
             errordict[errorname] = error
             print(f"{errorname}: {error}")
-        errorlists['total'] = errordict
-        with open(f'{args.outdir}/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+        errorlists["total"] = errordict
+        with open(
+            f"{args.outdir}/{errortype}{num_data_name}{modeltype}{args.jsonsuffix}.json",
+            "w",
+        ) as fp:
             json.dump(errorlists, fp)
-    with open(f'{args.outdir}/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json', 'w') as fp:
+    with open(
+        f"{args.outdir}/positions_{num_data_name}{modeltype}{args.jsonsuffix}.json", "w"
+    ) as fp:
         json.dump(positionlists, fp, cls=NumpyEncoder)
+    LatencyLogger.export_latencies_to_json(
+        f"{args.outdir}/latencies_{num_data_name}{modeltype}{args.jsonsuffix}.json"
+    )
+    LatencyLogger.export_latency_stats_to_json(
+        f"{args.outdir}/latency_stats_{num_data_name}{modeltype}{args.jsonsuffix}.json",
+        first_n_frames_to_skip=args.first_n_frames_to_skip_for_latency_stats,
+    )
