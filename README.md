@@ -1,6 +1,6 @@
 # STIRMetrics
 
-STIRMetrics is an evaluation framework for the [2025 STIR Challenge](https://www.synapse.org/Synapse:syn65877821/wiki/). STIRMetrics calculates accuracy metrics to evaluate point tracking in surgical scenarios. STIRMetrics provides baselines to get started. For 2D, we provide implementations of CSRT, MFT, and RAFT. For 3D, we provide a simple RAFT+RAFT-Stereo method. Modify the code as needed to run your tracking algorithm and output point tracks.
+STIRMetrics is an evaluation framework for the [2025 STIR Challenge](https://www.synapse.org/Synapse:syn65877821/wiki/). STIRMetrics calculates accuracy metrics to evaluate point tracking in surgical scenarios. STIRMetrics provides baselines to get started. For 2D, we provide implementations of 1. CSRT, 2. MFT, and 3. RAFT. For 3D, we provide a simple RAFT+RAFT-Stereo method. Modify the code as needed to run your tracking algorithm and output point tracks.
 
 **Note:** To obtain the 2024 challenge code, please checkout the tag `STIRC2024`. The 2025 challenge code is this current branch.
 
@@ -25,7 +25,6 @@ git clone STIRMetrics
 cd STIRMetrics/src
 ```
 
-
 ### Usage with docker
 
 ```
@@ -34,7 +33,7 @@ docker build -t stirchallenge .
 cd STIRMetrics/src
 ```
 
-Now you should be able to run the same commands (with visualization disabled via passing the `-showvis 0` flag to the python applications). Mount a local volume by modifying `rundocker.sh` if you want to edit/change your code while you build your docker container.
+Now you should be able to run the same commands (with visualization disabled via passing the `-showvis 0` flag to the python applications). You can mount a local volume by modifying `rundocker.sh` if you want to edit/change your code while you build your docker container. If you mount a local volume, before submission you must make sure to copy all code into your docker image so that it is entirely self-contained and references no files on your system.
 
 ## Utilities
 
@@ -66,9 +65,12 @@ This produces output json files of point locations in 2D and 3D (in mm) to the o
 
 ## Calculating Error Threshold Metrics for Challenge Evaluation
 
-1. Export ground-truth files.
+1. Export ground-truth files (on STIRC2024 or STIROrig for testing your model)
 2. Run your tracker on the data.
-3. Calculate metrics between your outputs and the ground truth.
+3. Calculate error metrics between your outputs and the ground truth.
+4. Repeat steps 2-3 until happy with your model, then submit your method as a docker container.
+
+**Note:** For the challenge itself, the organizers will run step 1 and 3 on the unseen data for the challenge. When developing, we recommend following these steps on STIRC2024 and STIROrig to assist designing your methods.
 
 ### 1. Generate Ground Truth JSON
 
@@ -80,9 +82,9 @@ python datatest/write2dgtjson.py --num_data -1 --jsonsuffix test
 
 **Note:** For challenge submissions on the test set, the ground truth location files will be generated, and run by the challenge organizers on the non-publicly available 2025 challenge test split.
 
-### 2. Generate JSON for your estimated trackes
+### 2. Run your tracker: Generate JSON for your estimated tracks
 
-Then generate a json file of tracked points predicted by your model using (select whatever you want when testing for `num_data`, and modify the random seed for different sets).
+Generate a json file of tracked points predicted by your model. When testing, select whatever number of sequences you want to use for `num_data`, and modify the random seed (in the code) to obtain different sets.
 
 ```
 python datatest/flow2d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype <YOURMODEL> --ontestingset 1
@@ -95,9 +97,9 @@ python datatest/flow3d.py --num_data 7 --showvis 0 --jsonsuffix test --modeltype
 **Note:** For the challenge, we will run your model on the testing set with `--num_data -1`. Ensure your model executes in a reasonable amount of time. Set your modeltype, or use MFT, RAFT, CSRT to see baseline results for 2D (`RAFT_Stereo_RAFT` is the only modeltype baseline available for 3D). `ontestingset` must be set to 1 for the docker submission, since your model will **not** have access to the ending segmentation locations. For the challenge we will be running your model via the flow2d/3d commands. Thus we recommend not modifying the command-line interface to this file.
 
 
-### 3. Calculate metricss
+### 3. Calculate metrics
 
-The generated ground truth files (start and end gt locations) and your estimates can then be passed into the metric calculator with this:
+The generated ground truth files (start and end ground truth locations) and your estimates can then be passed into the metric calculator with this:
 
 ```
 python datatest/calculate_error_from_json2d.py --startgt results/gt_positions_start_all_test.json --endgt results/gt_positions_end_all_test.json  --model_predictions results/positions_<numdata><YOURMODEL>test.json
@@ -105,3 +107,8 @@ python datatest/calculate_error_from_json3d.py --startgt results/gt_3d_positions
 ```
 
 This will print threshold metrics for your model, alongside metrics for control version of zero-motion. For the challenge, this script will be run by organizers on your `positions.json` file. For the 3D submissions, we will evaluate metrics for both the 2d and 3d locations.
+
+
+### 4. Submit to challenge
+
+You will deliver a docker image (created with `docker image save`) to the organizers which runs commands in step 2 and exits. This should be provided along your edited version of `./rundocker.sh`.
