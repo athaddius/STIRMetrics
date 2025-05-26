@@ -16,4 +16,4 @@ RUN mkdir -p /tmp \
 RUN pip install torchvision onnxruntime-gpu
 RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg libsm6 libxext6
 
-RUN git clone https://github.com/athaddius/STIRMetrics.git
+RUN git clone https://github.com/athaddius/STIRMetrics.git # change to your code/fork of stirmetrics
