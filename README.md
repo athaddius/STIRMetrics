@@ -10,6 +10,13 @@ STIRMetrics is an evaluation framework for the [2025 STIR Challenge](https://www
 - **2024** [2024 STIR Challenge Paper](https://arxiv.org/abs/2503.24306)
 - **Original Dataset** [Original dataset paper](https://ieeexplore.ieee.org/document/10458702)
 
+**Dataset Download Links**
+
+- [STIRC2024](https://zenodo.org/records/14803158) (2024 Challenge dataset, no overlap with STIROrig)
+- [STIROrig](https://ieee-dataport.org/open-access/stir-surgical-tattoos-infrared) (Original large dataset)
+
+**Citations**
+
 ```
 @misc{schmidtSTIRC2024,
       title={Point Tracking in Surgery--The 2024 Surgical Tattoos in Infrared (STIR) Challenge}, 
@@ -34,16 +41,14 @@ STIRMetrics is an evaluation framework for the [2025 STIR Challenge](https://www
   doi={10.1109/TMI.2024.3372828}}
 ```
 
-## Datasets
-
-[STIROrig](https://ieee-dataport.org/open-access/stir-surgical-tattoos-infrared) (Original large dataset)
-[STIRC2024](https://zenodo.org/records/14803158) (2024 Challenge dataset, no overlap with STIROrig)
 
 ## Registration, Prizes, and Submission
 
-See the [2025 STIR Challenge](https://www.synapse.org/Synapse:syn65877821/wiki/) for details.
+The 2025 STIR challenge is complete, please wait for info on the upcoming 2026 challenge.
 
 ## Usage
+
+Here we will provide details on how to use STIRMetrics to evaluate + test your tracking code, either with or without docker.
 
 ### In your python environment (useful for visualization applications)
 
